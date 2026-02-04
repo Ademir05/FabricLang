@@ -3,16 +3,19 @@
     // }
     
 mod compiler;
-use crate::compiler::lexer::Lexer;
+// use crate::compiler::lexer::Lexer;
 
 fn main() {
     let input = "int x = 180;int y=200;";
-    let mut lexer = Lexer::new(input);
-    let tokens = lexer.tokenize();
 
-    println!("Código fuente: {}", input);
-    println!("Tokens generados:");
-    for token in tokens {
-        println!("{:?}", token);
-    }
+    println!("{}", input);
+
+    // let mut lexer = Lexer::new(input);
+    // let tokens = lexer.tokenize();
+
+    // println!("Código fuente: {}", input);
+    // println!("Tokens generados:");
+    // for token in tokens {
+    //     println!("{:?}", token);
+    // }
 }

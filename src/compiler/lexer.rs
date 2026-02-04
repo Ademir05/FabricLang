@@ -1,6 +1,6 @@
+use crate::compiler::lexer::Token::*;
 use std::iter::Peekable;
 use std::str::Chars;
-use crate::compiler::lexer::Token::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -9,81 +9,112 @@ pub enum Token {
     Integer(i64),
     Assign,
     Plus,
+    DoubleEqual,
     Semi,
     EOF,
 }
 
-pub struct Lexer<'a> {
-    chars: Peekable<Chars<'a>>,
+pub struct LexicalError {
+    message: String,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+impl LexicalError {
+    pub fn new(message: &str) -> Self {
         Self {
-            chars: input.chars().peekable(),
+            message: message.to_string(),
         }
     }
+}
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
-        let mut tokens = Vec::new();
-        while let Some(token) = self.next_token() {
-            let is_eof = token == EOF;
-            tokens.push(token);
-            if is_eof { break; }
-        }
-        tokens
-    }
+pub struct Lexer {
+    input: Vec<char>,
+    position: usize,
+}
 
-    fn next_token(&mut self) -> Option<Token> {
+impl Lexer {
+    pub fn next_token(&mut self) -> Result<Token, LexicalError> {
         self.skip_whitespace();
 
-        let c = match self.chars.next() {
-            Some(c) => c,
-            None => return Some(EOF),
-        };
+        if self.is_at_end() {
+            return Ok(Token::EOF);
+        }
+
+        let c: char = self.peek();
+
+        if c.is_alphabetic() {
+            return self.read_identifier();
+        }
+
+        if c.is_ascii_digit() {
+            return self.read_number();
+        }
 
         match c {
-            ';' => Some(Semi),
-            '=' => Some(Assign),
-            '+' => Some(Plus),
-            'a'..='z' | 'A'..='Z' | '_' => {
-                let mut identifier = String::from(c);
-                while let Some(&next) = self.chars.peek() {
-                    if next.is_alphanumeric() || next == '_' {
-                        identifier.push(self.chars.next().unwrap());
-                    } else {
-                        break;
-                    }
-                }
-                
-                // Verificar si es palabra reservada
-                match identifier.as_str() {
-                    "int" => Some(IntType),
-                    _ => Some(Identifier(identifier)),
+            '=' => {
+                self.advance();
+                if self.match_next('=') {
+                    self.advance();
+                    Ok(Token::DoubleEqual)
+                } else {
+                    Ok(Token::Assign)
                 }
             }
-            '0'..='9' => {
-                let mut number_str = String::from(c);
-                while let Some(&next) = self.chars.peek() {
-                    if next.is_ascii_digit() {
-                        number_str.push(self.chars.next().unwrap());
-                    } else {
-                        break;
-                    }
-                }
-                Some(Integer(number_str.parse().unwrap()))
-            }
-            _ => None, // Aquí manejarías errores léxicos
+            _ => Err(LexicalError::new("Not implemented")),
         }
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(&c) = self.chars.peek() {
-            if c.is_whitespace() {
-                self.chars.next();
-            } else {
-                break;
-            }
+        while !self.is_at_end() && self.input[self.position].is_whitespace() {
+            self.position += 1;
+        }
+    }
+
+    fn read_identifier(&mut self) -> Result<Token, LexicalError> {
+        let start = self.position;
+        while !self.is_at_end() && (self.peek().is_alphanumeric() || self.peek() == '_') {
+            self.advance();
+        }
+        let identifier: String = self.input[start..self.position].iter().collect();
+        match identifier.as_str() {
+            "int" => Ok(Token::IntType),
+            _ => Ok(Token::Identifier(identifier)),
+        }
+    }
+
+    fn read_number(&mut self) -> Result<Token, LexicalError> {
+        let start = self.position;
+        while !self.is_at_end() && self.peek().is_ascii_digit() {
+            self.advance();
+        }
+        let number_str: String = self.input[start..self.position].iter().collect();
+        match number_str.parse::<i64>() {
+            Ok(n) => Ok(Token::Integer(n)),
+            Err(_) => Err(LexicalError::new("Invalid integer literal")),
+        }
+    }
+
+    fn advance(&mut self) -> char {
+        let c = self.input[self.position];
+        self.position += 1;
+        c
+    }
+
+    fn match_next(&self, expected: char) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        self.input[self.position] == expected
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.position >= self.input.len()
+    }
+
+    fn peek(&self) -> char {
+        if self.is_at_end() {
+            '\0'
+        } else {
+            self.input[self.position]
         }
     }
 }
