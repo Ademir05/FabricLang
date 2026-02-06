@@ -1,7 +1,3 @@
-use crate::compiler::lexer::Token::*;
-use std::iter::Peekable;
-use std::str::Chars;
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // Types
@@ -78,6 +74,18 @@ pub enum Token {
     EOF,
 }
 
+pub struct TokenData {
+    pub kind: Token,
+    pub line: usize,
+    pub col: usize,
+}
+
+impl TokenData {
+    pub fn new(kind: Token, line: usize, col: usize) -> Self {
+        Self { kind, line, col }
+    }
+}
+
 #[derive(Debug)]
 struct LexicalError {
     message: String,
@@ -100,6 +108,10 @@ pub struct Lexer {
 }
 
 impl Lexer {
+    fn emit(&self, kind: Token, start_col: usize) -> TokenData {
+        TokenData::new(kind, self.line, start_col)
+    }
+
     pub fn new(input: &str) -> Self {
         Self {
             input: input.chars().collect(),
@@ -109,51 +121,52 @@ impl Lexer {
         }
     }
 
-    fn next_token(&mut self) -> Result<Token, LexicalError> {
+    fn next_token(&mut self) -> Result<TokenData, LexicalError> {
         self.skip_whitespace();
+        let start_col = self.column;
 
         if self.is_at_end() {
-            return Ok(Token::EOF);
+            return Ok(self.emit(Token::EOF, start_col));
         }
 
         let c: char = self.peek();
 
         if c.is_alphabetic() {
-            return self.read_identifier();
+            return self.read_identifier(start_col);
         }
 
         if c.is_ascii_digit() {
-            return self.read_number();
+            return self.read_number(start_col);
         }
 
         match c {
             '(' => {
                 self.advance();
-                Ok(Token::LeftParen)
+                Ok(self.emit(Token::LeftParen, start_col))
             }
             ')' => {
                 self.advance();
-                Ok(Token::RightParen)
+                Ok(self.emit(Token::RightParen, start_col))
             }
             '{' => {
                 self.advance();
-                Ok(Token::LeftBrace)
+                Ok(self.emit(Token::LeftBrace, start_col))
             }
             '}' => {
                 self.advance();
-                Ok(Token::RightBrace)
+                Ok(self.emit(Token::RightBrace, start_col))
             }
             '[' => {
                 self.advance();
-                Ok(Token::LeftBracket)
+                Ok(self.emit(Token::LeftBracket, start_col))
             }
             ']' => {
                 self.advance();
-                Ok(Token::RightBracket)
+                Ok(self.emit(Token::RightBracket, start_col))
             }
             ',' => {
                 self.advance();
-                Ok(Token::Comma)
+                Ok(self.emit(Token::Comma, start_col))
             }
 
             // Operadores lógicos (&& y ||)
@@ -161,7 +174,7 @@ impl Lexer {
                 self.advance();
                 if self.match_next('&') {
                     self.advance();
-                    Ok(Token::And)
+                    Ok(self.emit(Token::And, start_col))
                 } else {
                     let msg = format!("Expected '&' after '&'");
                     return Err(LexicalError::new(&msg, self.line, self.column));
@@ -171,7 +184,7 @@ impl Lexer {
                 self.advance();
                 if self.match_next('|') {
                     self.advance();
-                    Ok(Token::Or)
+                    Ok(self.emit(Token::Or, start_col))
                 } else {
                     let msg = format!("Expected '|' after '|'");
                     return Err(LexicalError::new(&msg, self.line, self.column));
@@ -183,51 +196,51 @@ impl Lexer {
                 self.advance();
                 if self.match_next('=') {
                     self.advance();
-                    return Ok(Token::Equal);
+                    return Ok(self.emit(Token::Equal, start_col));
                 } else {
-                    return Ok(Token::Assign);
+                    return Ok(self.emit(Token::Assign, start_col));
                 }
             }
             '<' => {
                 self.advance();
                 if self.match_next('=') {
                     self.advance();
-                    return Ok(Token::LessEqual);
+                    return Ok(self.emit(Token::LessEqual, start_col));
                 } else {
-                    return Ok(Token::Less);
+                    return Ok(self.emit(Token::Less, start_col));
                 }
             }
             '>' => {
                 self.advance();
                 if self.match_next('=') {
                     self.advance();
-                    return Ok(Token::GreaterEqual);
+                    return Ok(self.emit(Token::GreaterEqual, start_col));
                 } else {
-                    return Ok(Token::Greater);
+                    return Ok(self.emit(Token::Greater, start_col));
                 }
             }
             '!' => {
                 self.advance();
                 if self.match_next('=') {
                     self.advance();
-                    return Ok(Token::NotEqual);
+                    return Ok(self.emit(Token::NotEqual, start_col));
                 } else {
-                    return Ok(Token::Not);
+                    return Ok(self.emit(Token::Not, start_col));
                 }
             }
 
             // Aritmetic Operators
             '+' => {
                 self.advance();
-                return Ok(Token::Plus);
+                return Ok(self.emit(Token::Plus, start_col));
             }
             '-' => {
                 self.advance();
-                return Ok(Token::Minus);
+                return Ok(self.emit(Token::Minus, start_col));
             }
             '*' => {
                 self.advance();
-                return Ok(Token::Multiply);
+                return Ok(self.emit(Token::Multiply, start_col));
             }
             '/' => {
                 self.advance();
@@ -237,25 +250,25 @@ impl Lexer {
                     }
                     self.next_token()
                 } else {
-                    Ok(Token::Divide)
+                    Ok(self.emit(Token::Divide, start_col))
                 }
             }
             '%' => {
                 self.advance();
-                return Ok(Token::Modulo);
+                return Ok(self.emit(Token::Modulo, start_col));
             }
             '^' => {
                 self.advance();
-                return Ok(Token::Power);
+                return Ok(self.emit(Token::Power, start_col));
             }
 
             // Other Operators
             ';' => {
                 self.advance();
-                return Ok(Token::Semi);
+                return Ok(self.emit(Token::Semi, start_col));
             }
-            '"' => return self.read_string(),
-            '\'' => return self.read_char(),
+            '"' => return self.read_string(start_col),
+            '\'' => return self.read_char(start_col),
 
             // Not supported
             _ => {
@@ -271,7 +284,7 @@ impl Lexer {
 
     fn skip_whitespace(&mut self) {
         while !self.is_at_end() && self.input[self.position].is_whitespace() {
-            self.position += 1;
+            self.advance();
         }
     }
 
@@ -282,53 +295,54 @@ impl Lexer {
         self.input[self.position] == expected
     }
 
-    fn read_identifier(&mut self) -> Result<Token, LexicalError> {
+    fn read_identifier(&mut self, start_col: usize) -> Result<TokenData, LexicalError> {
         let start: usize = self.position;
         while !self.is_at_end() && (self.peek().is_alphanumeric() || self.peek() == '_') {
             self.advance();
         }
         let identifier: String = self.input[start..self.position].iter().collect();
-        match identifier.as_str() {
-            "int" => Ok(Token::IntType),
-            "bigint" => Ok(Token::BigIntType),
-            "string" => Ok(Token::StringType),
-            "bool" => Ok(Token::BoolType),
-            "float" => Ok(Token::FloatType),
-            "double" => Ok(Token::DoubleType),
-            "char" => Ok(Token::CharType),
-            "void" => Ok(Token::VoidType),
-            "if" => Ok(Token::If),
-            "else" => Ok(Token::Else),
-            "while" => Ok(Token::While),
-            "for" => Ok(Token::For),
-            "switch" => Ok(Token::Switch),
-            "case" => Ok(Token::Case),
-            "default" => Ok(Token::Default),
-            "function" => Ok(Token::Function),
-            "true" => Ok(Token::BoolLiteral(true)),
-            "false" => Ok(Token::BoolLiteral(false)),
-            "return" => Ok(Token::Return),
-            _ => Ok(Token::Identifier(identifier)),
-        }
+        let kind = match identifier.as_str() {
+            "int" => Token::IntType,
+            "bigint" => Token::BigIntType,
+            "string" => Token::StringType,
+            "bool" => Token::BoolType,
+            "float" => Token::FloatType,
+            "double" => Token::DoubleType,
+            "char" => Token::CharType,
+            "void" => Token::VoidType,
+            "if" => Token::If,
+            "else" => Token::Else,
+            "while" => Token::While,
+            "for" => Token::For,
+            "switch" => Token::Switch,
+            "case" => Token::Case,
+            "default" => Token::Default,
+            "function" => Token::Function,
+            "return" => Token::Return,
+            "true" => Token::BoolLiteral(true),
+            "false" => Token::BoolLiteral(false),
+            _ => Token::Identifier(identifier),
+        };
+        Ok(self.emit(kind, start_col))
     }
 
-    fn read_char(&mut self) -> Result<Token, LexicalError> {
+    fn read_char(&mut self, start_col: usize) -> Result<TokenData, LexicalError> {
         self.advance();
         if self.is_at_end() {
             let msg = format!("Unterminated character literal");
-            return Err(LexicalError::new(&msg, self.line, self.column));
+            return Err(LexicalError::new(&msg, self.line, start_col));
         }
         let content: char = self.advance();
 
         if self.peek() != '\'' {
             let msg = format!("Invalid character literal");
-            return Err(LexicalError::new(&msg, self.line, self.column));
+            return Err(LexicalError::new(&msg, self.line, start_col));
         }
         self.advance();
-        return Ok(Token::CharLiteral(content));
+        return Ok(self.emit(Token::CharLiteral(content), start_col));
     }
 
-    fn read_string(&mut self) -> Result<Token, LexicalError> {
+    fn read_string(&mut self, start_col: usize) -> Result<TokenData, LexicalError> {
         self.advance();
         let start: usize = self.position;
         while !self.is_at_end() && self.peek() != '"' {
@@ -336,14 +350,14 @@ impl Lexer {
         }
         if self.is_at_end() {
             let msg = format!("Unterminated string literal");
-            return Err(LexicalError::new(&msg, self.line, self.column));
+            return Err(LexicalError::new(&msg, self.line, start_col));
         }
         let content: String = self.input[start..self.position].iter().collect();
         self.advance();
-        return Ok(Token::StringLiteral(content));
+        return Ok(self.emit(Token::StringLiteral(content), start_col));
     }
 
-    fn read_number(&mut self) -> Result<Token, LexicalError> {
+    fn read_number(&mut self, start_col: usize) -> Result<TokenData, LexicalError> {
         let start: usize = self.position;
         let mut is_float = false;
         while !self.is_at_end() && self.input[self.position].is_ascii_digit() {
@@ -354,7 +368,7 @@ impl Lexer {
             self.advance();
             if !self.peek().is_ascii_digit() {
                 let msg = format!("Expected digit after decimal point");
-                return Err(LexicalError::new(&msg, self.line, self.column));
+                return Err(LexicalError::new(&msg, self.line, start_col));
             }
             while !self.is_at_end() && self.input[self.position].is_ascii_digit() {
                 self.advance();
@@ -363,18 +377,30 @@ impl Lexer {
         let literal: String = self.input[start..self.position].iter().collect();
 
         if !self.is_at_end() && self.input[self.position].is_alphabetic() {
-            return Err(LexicalError::new(format!("Invalid number literal at position {}", self.position).as_str(), self.line, self.column));
+            return Err(LexicalError::new(
+                format!("Invalid number literal at position {}", self.position).as_str(),
+                self.line,
+                start_col,
+            ));
         }
 
         if is_float {
             match literal.parse::<f64>() {
-                Ok(n) => Ok(Token::FloatLiteral(n)),
-                Err(_) => Err(LexicalError::new("Invalid float literal", self.line, self.column)),
+                Ok(n) => Ok(self.emit(Token::FloatLiteral(n), start_col)),
+                Err(_) => Err(LexicalError::new(
+                    "Invalid float literal",
+                    self.line,
+                    start_col,
+                )),
             }
         } else {
             match literal.parse::<i64>() {
-                Ok(n) => Ok(Token::Integer(n)),
-                Err(_) => Err(LexicalError::new("Invalid integer literal", self.line, self.column)),
+                Ok(n) => Ok(self.emit(Token::Integer(n), start_col)),
+                Err(_) => Err(LexicalError::new(
+                    "Invalid integer literal",
+                    self.line,
+                    start_col,
+                )),
             }
         }
     }
@@ -400,13 +426,13 @@ impl Lexer {
         c
     }
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
-        let mut tokens: Vec<Token> = Vec::new();
+    pub fn tokenize(&mut self) -> Vec<TokenData> {
+        let mut tokens: Vec<TokenData> = Vec::new();
 
         loop {
             match self.next_token() {
                 Ok(token) => {
-                    let is_eof = token == Token::EOF;
+                    let is_eof = token.kind == Token::EOF;
                     tokens.push(token);
                     if is_eof {
                         break;
