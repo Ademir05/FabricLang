@@ -1,90 +1,8 @@
-#[derive(Debug, PartialEq, Clone)]
-pub enum Token {
-    // Types
-    IntType,
-    BigIntType,
-    FloatType,
-    DoubleType,
-    StringType,
-    BoolType,
-    CharType,
-    VoidType,
+use std::collections::HashMap;
 
-    // Literals
-    Integer(i64),
-    FloatLiteral(f64),
-    StringLiteral(String),
-    BoolLiteral(bool),
-    CharLiteral(char),
-
-    // Identifiers
-    Identifier(String),
-
-    // Aritmetic Operators
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-    Modulo,
-    Power,
-
-    // Logical Operators
-    And,
-    Or,
-
-    // Parentheses
-    LeftParen,
-    RightParen,
-
-    // Brackets
-    LeftBracket,
-    RightBracket,
-
-    // Braces
-    LeftBrace,
-    RightBrace,
-
-    // Commas
-    Comma,
-
-    // Comparison Operators
-    Equal,
-    NotEqual,
-    Greater,
-    Less,
-    GreaterEqual,
-    LessEqual,
-    Not,
-
-    // Control Structures
-    If,
-    Else,
-    While,
-    For,
-    Switch,
-    Case,
-    Default,
-
-    // Functions
-    Function,
-    Return,
-
-    Assign,
-    Semi,
-    EOF,
-}
-
-pub struct TokenData {
-    pub kind: Token,
-    pub line: usize,
-    pub col: usize,
-}
-
-impl TokenData {
-    pub fn new(kind: Token, line: usize, col: usize) -> Self {
-        Self { kind, line, col }
-    }
-}
+use crate::persistence::models::SyntaxConfig;
+use crate::core::token::TokenData;
+use crate::core::token::Token;
 
 #[derive(Debug)]
 struct LexicalError {
@@ -105,6 +23,7 @@ pub struct Lexer {
     pub position: usize,
     pub line: usize,
     pub column: usize,
+    pub keywords_lookup: HashMap<String, Token>,
 }
 
 impl Lexer {
@@ -112,12 +31,36 @@ impl Lexer {
         TokenData::new(kind, self.line, start_col)
     }
 
-    pub fn new(input: &str) -> Self {
+    pub fn new(input: &str, config: &SyntaxConfig) -> Self {
+        let mut lookup = HashMap::new();
+        lookup.insert(config.types.int_type.clone(), Token::IntType);
+        lookup.insert(config.types.big_int_type.clone(), Token::BigIntType);
+        lookup.insert(config.types.string_type.clone(), Token::StringType);
+        lookup.insert(config.types.bool_type.clone(), Token::BoolType);
+        lookup.insert(config.types.float_type.clone(), Token::FloatType);
+        lookup.insert(config.types.double_type.clone(), Token::DoubleType);
+        lookup.insert(config.types.void_type.clone(), Token::VoidType);
+        lookup.insert(config.types.char_type.clone(), Token::CharType);
+
+        lookup.insert(config.keywords.r#if.clone(), Token::If);
+        lookup.insert(config.keywords.r#else.clone(), Token::Else);
+        lookup.insert(config.keywords.r#while.clone(), Token::While);
+        lookup.insert(config.keywords.r#for.clone(), Token::For);
+        lookup.insert(config.keywords.switch.clone(), Token::Switch);
+        lookup.insert(config.keywords.case.clone(), Token::Case);
+        lookup.insert(config.keywords.default.clone(), Token::Default);
+        lookup.insert(config.keywords.function.clone(), Token::Function);
+        lookup.insert(config.keywords.r#return.clone(), Token::Return);
+
+        lookup.insert(config.literals.r#true.clone(), Token::BoolLiteral(true));
+        lookup.insert(config.literals.r#false.clone(), Token::BoolLiteral(false));
+
         Self {
             input: input.chars().collect(),
             position: 0,
             line: 1,
             column: 1,
+            keywords_lookup: lookup
         }
     }
 
@@ -248,7 +191,7 @@ impl Lexer {
                     while !self.is_at_end() && self.peek() != '\n' {
                         self.advance();
                     }
-                    self.next_token()
+                    return self.next_token()
                 } else {
                     Ok(self.emit(Token::Divide, start_col))
                 }
@@ -301,27 +244,11 @@ impl Lexer {
             self.advance();
         }
         let identifier: String = self.input[start..self.position].iter().collect();
-        let kind = match identifier.as_str() {
-            "int" => Token::IntType,
-            "bigint" => Token::BigIntType,
-            "string" => Token::StringType,
-            "bool" => Token::BoolType,
-            "float" => Token::FloatType,
-            "double" => Token::DoubleType,
-            "char" => Token::CharType,
-            "void" => Token::VoidType,
-            "if" => Token::If,
-            "else" => Token::Else,
-            "while" => Token::While,
-            "for" => Token::For,
-            "switch" => Token::Switch,
-            "case" => Token::Case,
-            "default" => Token::Default,
-            "function" => Token::Function,
-            "return" => Token::Return,
-            "true" => Token::BoolLiteral(true),
-            "false" => Token::BoolLiteral(false),
-            _ => Token::Identifier(identifier),
+
+        let kind = if let Some(token_kind) = self.keywords_lookup.get(&identifier) {
+            token_kind.clone()
+        } else {
+            Token::Identifier(identifier)
         };
         Ok(self.emit(kind, start_col))
     }

@@ -1,14 +1,9 @@
-// fn main() {
-//     println!("FabricLang Compiler en Rust v0.1.0");
-// }
-
-use crate::compiler::lexer::Lexer;
-mod compiler;
-mod persistence;
+use fabric_lang::core::lexer::Lexer;
+use fabric_lang::core::parser::Parser;
+use fabric_lang::persistence::{self, loader};
 
 
-
-fn main() {
+fn test_lexer() {
     // let input = "int edad = 25;\nstring msg = \"Hola\";";
     // let input = "if (a != b && c == true)";
     // let input = "int x = 10abc;";
@@ -23,7 +18,7 @@ bool = true;
     return a + b;
 }";
 
-    let mut lexer = Lexer::new(input);
+    let mut lexer = Lexer::new(input, &loader::read_config_file("src/config/syntax.toml").unwrap());
     let tokens = lexer.tokenize();
 
     for token in &tokens {
@@ -32,4 +27,22 @@ bool = true;
             token.kind, token.line, token.col
         );
     }
+}
+
+fn main() {
+    let input = "int edad = 2.147483647;"; // Prueba simple
+    
+    // 1. Cargar Config
+    let syntax_config = persistence::loader::read_config_file("src/config/syntax.toml").unwrap();
+
+    // 2. Tokenizar
+    let mut lexer = Lexer::new(input, &syntax_config);
+    let tokens = lexer.tokenize();
+
+    // 3. Parsear
+    let mut parser = Parser::new(tokens);
+    let ast = parser.parse();
+
+    // 4. Ver resultado
+    println!("{:#?}", ast);
 }

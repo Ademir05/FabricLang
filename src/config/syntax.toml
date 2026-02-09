@@ -18,3 +18,7 @@ Case = "case"
 Default = "default"
 Function = "function"
 Return = "return"
+
+[literals]
+True = "true"
+False = "false"

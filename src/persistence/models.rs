@@ -1,14 +1,25 @@
 use::serde::Deserialize;
 
+// Compiler Config
+#[derive(Debug, Deserialize)]
+pub struct CompilerConfig {
+    pub name: String,
+    pub executable_name: String,
+    pub extension: String,
+    pub version: String,
+}
+
+// Syntax Config
 #[derive(Debug, Deserialize)]
 pub struct SyntaxConfig {
     pub types: Types,
     pub keywords: Keywords,
+    pub literals: Literals,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Types {
-    #[serde(rename = "IntType")] // Coincide con el nombre exacto en el TOML
+    #[serde(rename = "IntType")]
     pub int_type: String,
     #[serde(rename = "BigIntType")]
     pub big_int_type: String,
@@ -46,4 +57,12 @@ pub struct Keywords {
     pub function: String,
     #[serde(rename = "Return")]
     pub r#return: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Literals {
+    #[serde(rename = "True")]
+    pub r#true: String,
+    #[serde(rename = "False")]
+    pub r#false: String,
 }
