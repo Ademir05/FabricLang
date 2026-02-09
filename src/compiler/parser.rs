@@ -1,78 +1,43 @@
-// use std::iter::Peekable;
-// use std::str::Chars;
-// use crate::compiler::lexer::Token::{self, *};
+use crate::compiler::{
+    ast::Stmt,
+    lexer::{Token, TokenData},
+};
 
-// pub struct Lexer<'a> {
-//     chars: Peekable<Chars<'a>>,
-// }
+pub struct Parser {
+    tokens: Vec<TokenData>,
+    current: usize,
+}
 
-// impl<'a> Lexer<'a> {
-//     pub fn new(input: &'a str) -> Self {
-//         Self {
-//             chars: input.chars().peekable(),
-//         }
-//     }
+impl Parser {
+    pub fn new(tokens: Vec<TokenData>) -> Self {
+        Self { tokens, current: 0 }
+    }
 
-//     pub fn tokenize(&mut self) -> Vec<Token> {
-//         let mut tokens = Vec::new();
-//         while let Some(token) = self.next_token() {
-//             let is_eof = token == EOF;
-//             tokens.push(token);
-//             if is_eof { break; }
-//         }
-//         tokens
-//     }
+    // fn parse() -> Vec<Stmt> {
+    //     let mut stmts: Vec<Stmt> = Vec::new();
+    //     while let Some(token) = self.peek() {
+    //         match token.kind {
+    //             Token::IntType | Token::FloatType | Token::StringType | Token::BoolType | Token::CharType | Token::BigIntType | Token::DoubleType => {
 
-//     fn next_token(&mut self) -> Option<Token> {
-//         self.skip_whitespace();
+    //         }
+    //     }
+    // }
 
-//         let c = match self.chars.next() {
-//             Some(c) => c,
-//             None => return Some(EOF),
-//         };
+    fn advance(&mut self) -> Option<&TokenData> {
+        if self.current < self.tokens.len() {
+            let token = &self.tokens[self.current];
+            self.current += 1;
+            Some(token)
+        } else {
+            None
+        }
+    }
 
-//         match c {
-//             ';' => Some(Semi),
-//             '=' => Some(Assign),
-//             '+' => Some(Plus),
-//             'a'..='z' | 'A'..='Z' | '_' => {
-//                 let mut identifier = String::from(c);
-//                 while let Some(&next) = self.chars.peek() {
-//                     if next.is_alphanumeric() || next == '_' {
-//                         identifier.push(self.chars.next().unwrap());
-//                     } else {
-//                         break;
-//                     }
-//                 }
-                
-//                 // Verificar si es palabra reservada
-//                 match identifier.as_str() {
-//                     "int" => Some(IntType),
-//                     _ => Some(Identifier(identifier)),
-//                 }
-//             }
-//             '0'..='9' => {
-//                 let mut number_str = String::from(c);
-//                 while let Some(&next) = self.chars.peek() {
-//                     if next.is_ascii_digit() {
-//                         number_str.push(self.chars.next().unwrap());
-//                     } else {
-//                         break;
-//                     }
-//                 }
-//                 Some(Integer(number_str.parse().unwrap()))
-//             }
-//             _ => None, // Aquí manejarías errores léxicos
-//         }
-//     }
-
-//     fn skip_whitespace(&mut self) {
-//         while let Some(&c) = self.chars.peek() {
-//             if c.is_whitespace() {
-//                 self.chars.next();
-//             } else {
-//                 break;
-//             }
-//         }
-//     }
-// }
+    fn peek(&self) -> Option<&TokenData> {
+        if self.current < self.tokens.len() {
+            Some(&self.tokens[self.current])
+        } else {
+            None
+        }
+    }
+}

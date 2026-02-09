@@ -1,0 +1,24 @@
+name = "FabricLang"
+version = "0.0.1"
+debug = true
+
+[types]
+IntType = "int"
+BigIntType = "bigint"
+StringType = "string"
+BoolType = "bool"
+FloatType = "float"
+DoubleType = "double"
+CharType = "char"
+VoidType = "void"
+
+[keywords]
+If = "if"
+Else = "else"
+While = "while"
+For = "for"
+Switch = "switch"
+Case = "case"
+Default = "default"
+Function = "function"
+Return = "return"
