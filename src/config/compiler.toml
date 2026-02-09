@@ -1,0 +1,4 @@
+name = "FabricLang"
+executable_name = "fabriclang"
+extension = "fbr"
+version = "0.1.0"

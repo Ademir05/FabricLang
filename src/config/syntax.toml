@@ -1,7 +1,3 @@
-name = "FabricLang"
-version = "0.0.1"
-debug = true
-
 [types]
 IntType = "int"
 BigIntType = "bigint"
