@@ -30,19 +30,15 @@ bool = true;
 }
 
 fn main() {
-    let input = "int edad = 2.147483647;"; // Prueba simple
-    
-    // 1. Cargar Config
+    let input = "int edad = (10 * 5) + 2;";
+
     let syntax_config = persistence::loader::read_config_file("src/config/syntax.toml").unwrap();
 
-    // 2. Tokenizar
     let mut lexer = Lexer::new(input, &syntax_config);
     let tokens = lexer.tokenize();
 
-    // 3. Parsear
     let mut parser = Parser::new(tokens);
     let ast = parser.parse();
 
-    // 4. Ver resultado
     println!("{:#?}", ast);
 }

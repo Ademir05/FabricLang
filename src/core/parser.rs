@@ -1,5 +1,5 @@
+use crate::core::ast::{Expr, Stmt};
 use crate::core::token::{Token, TokenData};
-use crate::core::ast::{Stmt, Expr};
 
 pub struct Parser {
     tokens: Vec<TokenData>,
@@ -22,9 +22,13 @@ impl Parser {
     fn parse_statement(&mut self) -> Stmt {
         let t = self.peek().expect("Unexpected end of input");
         match t.kind {
-            // Si empieza con un tipo, es una declaración
-            Token::IntType | Token::FloatType | Token::StringType | 
-            Token::BoolType | Token::CharType | Token::BigIntType | Token::DoubleType=> self.parse_var_declaration(),
+            Token::IntType
+            | Token::FloatType
+            | Token::StringType
+            | Token::BoolType
+            | Token::CharType
+            | Token::BigIntType
+            | Token::DoubleType => self.parse_var_declaration(),
             _ => panic!("Sentencia no reconocida: {:?}", t.kind),
         }
     }
@@ -52,24 +56,65 @@ impl Parser {
         // 4. Finalizar con ';'
         self.consume(Token::Semi, "Se esperaba ';' al final de la declaración");
 
-        Stmt::VarDeclaration { ty, name, initializer }
+        Stmt::VarDeclaration {
+            ty,
+            name,
+            initializer,
+        }
     }
-    
-    // Función temporal para que el código compile mientras haces la lógica matemática
+
     fn parse_expression(&mut self) -> Expr {
-        let t = self.advance().unwrap();
-        Expr::Literal(t.kind.clone())
+        self.additive()
     }
 
-    // fn parse() -> Vec<Stmt> {
-    //     let mut stmts: Vec<Stmt> = Vec::new();
-    //     while let Some(token) = self.peek() {
-    //         match token.kind {
-    //             Token::IntType | Token::FloatType | Token::StringType | Token::BoolType | Token::CharType | Token::BigIntType | Token::DoubleType => {
+    fn additive(&mut self) -> Expr {
+        let mut expr = self.multiplicative();
 
-    //         }
-    //     }
-    // }
+        while let Some(t) = self.peek() {
+            if matches!(t.kind, Token::Plus | Token::Minus) {
+                let operator = self.advance().unwrap().kind.clone();
+                let right = self.multiplicative();
+                expr = Expr::Binary {
+                    left: Box::new(expr),
+                    operator,
+                    right: Box::new(right),
+                };
+            } else {
+                break;
+            }
+        }
+        expr
+    }
+
+    fn multiplicative(&mut self) -> Expr {
+        let mut expr = self.primary();
+
+        while let Some(t) = self.peek() {
+            if matches!(t.kind, Token::Multiply | Token::Divide) {
+                let operator = self.advance().unwrap().kind.clone();
+                let right = self.primary();
+                expr = Expr::Binary {
+                    left: Box::new(expr),
+                    operator,
+                    right: Box::new(right),
+                };
+            } else {
+                break;
+            }
+        }
+        expr
+    }
+
+    fn primary(&mut self) -> Expr {
+        let token = self.advance().expect("Se esperaba un valor");
+        match &token.kind {
+            Token::Integer(_) | Token::FloatLiteral(_) | Token::StringLiteral(_) => {
+                Expr::Literal(token.kind.clone())
+            }
+            Token::Identifier(name) => Expr::Variable(name.clone()),
+            _ => panic!("Se esperaba un valor o variable en la línea {}", token.line),
+        }
+    }
 
     fn check(&self, kind: Token) -> bool {
         self.peek().map_or(false, |t| {
