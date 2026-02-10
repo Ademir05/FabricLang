@@ -30,7 +30,7 @@ bool = true;
 }
 
 fn main() {
-    let input = "int edad = (10 * 5) + 2;";
+    let input = "int edad = 10 * 5 + 2;";
 
     let syntax_config = persistence::loader::read_config_file("src/config/syntax.toml").unwrap();
 

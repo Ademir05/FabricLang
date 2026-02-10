@@ -22,3 +22,8 @@ Return = "return"
 [literals]
 True = "true"
 False = "false"
+
+[functions]
+Print = "print"
+Println = "println"
+Input = "input"
