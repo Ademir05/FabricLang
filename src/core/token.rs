@@ -48,7 +48,7 @@ pub enum Token {
     Comma,
 
     // Comparison Operators
-    Equal,
+    EqualEqual,
     NotEqual,
     Greater,
     Less,

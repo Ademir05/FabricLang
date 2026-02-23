@@ -1,36 +1,24 @@
 use fabric_lang::core::lexer::Lexer;
 use fabric_lang::core::parser::Parser;
-use fabric_lang::persistence::{self, loader};
-
-
-fn test_lexer() {
-    // let input = "int edad = 25;\nstring msg = \"Hola\";";
-    // let input = "if (a != b && c == true)";
-    // let input = "int x = 10abc;";
-    let input = "// Comentario inicial
-float num1 = 10.2;
-int num2 = 5;
-string = \"Hola\";
-char = 'a';
-bool = true;
-
-    function suma(a, b) {
-    return a + b;
-}";
-
-    let mut lexer = Lexer::new(input, &loader::read_config_file("src/config/syntax.toml").unwrap());
-    let tokens = lexer.tokenize();
-
-    for token in &tokens {
-        println!(
-            "Token: {:?}, Line: {}, Column: {}",
-            token.kind, token.line, token.col
-        );
-    }
-}
+use fabric_lang::persistence::{self};
 
 fn main() {
-    let input = "int edad = 10 * 5 + 2;";
+//     let input = "
+//     int x = (10 + 5) * 2;
+//     x = 100;
+// ";
+let input = "
+    int function suma(int a, int b) {
+        return a + b;
+    }
+
+    void function saludar() {
+        // código...
+    }
+
+    int x = suma(5, 10);
+    ";
+    // let input = "int edad = 10 * 5 + 2;";
 
     let syntax_config = persistence::loader::read_config_file("src/config/syntax.toml").unwrap();
 

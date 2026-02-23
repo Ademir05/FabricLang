@@ -27,12 +27,25 @@ pub enum Stmt {
         initializer: Option<Expr>,
     },
     Expression(Expr),
-    Return(Expr),
-    Block(Vec<Stmt>),
+    Return(Option<Expr>),
+    Assignment {
+        name: String,
+        value: Expr,
+    },
     If {
         condition: Expr,
-        then_branch: Box<Stmt>,
-        else_branch: Option<Box<Stmt>>,
+        then_branch: Vec<Stmt>,
+        else_branch: Option<Vec<Stmt>>,
     },
-    // Aquí podrías añadir While, For, etc.
+    While {
+        condition: Expr,
+        body: Vec<Stmt>,
+    },
+    Block(Vec<Stmt>),
+    Function {
+        return_type: Token,
+        name: String,
+        params: Vec<(Token, String)>,
+        body: Vec<Stmt>,
+    },
 }

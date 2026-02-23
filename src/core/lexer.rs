@@ -139,7 +139,7 @@ impl Lexer {
                 self.advance();
                 if self.match_next('=') {
                     self.advance();
-                    return Ok(self.emit(Token::Equal, start_col));
+                    return Ok(self.emit(Token::EqualEqual, start_col));
                 } else {
                     return Ok(self.emit(Token::Assign, start_col));
                 }
