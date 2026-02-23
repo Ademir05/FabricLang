@@ -82,11 +82,6 @@ impl Interpreter {
         }
     }
 
-    // pub fn interpret(&mut self, statements: Vec<Stmt>) {
-    //     for stmt in statements {
-    //         let _ = self.execute(stmt);
-    //     }
-    // }
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
         for stmt in statements {
             if let Err(e) = self.execute(stmt) {
@@ -186,9 +181,8 @@ impl Interpreter {
             Stmt::Return(value) => {
                 if let Some(val_expr) = value {
                     let val = self.evaluate(val_expr)?;
-                    // Aquí creamos un Variable temporal para return
                     return Ok(Some(Variable {
-                        var_type: Token::VoidType, // o deducir según tu lógica
+                        var_type: Token::VoidType,
                         value: val,
                     }));
                 }
@@ -197,13 +191,7 @@ impl Interpreter {
                     value: Value::Void,
                 }))
             }
-            // Stmt::Return(value) => {
-            //     if let Some(val_expr) = value {
-            //         let v = self.evaluate(val_expr);
-            //         return Ok(Some(v));
-            //     }
-            //     Ok(Some(Value::Void))
-            // }
+
             Stmt::Block(statements) => {
                 let old_env = std::mem::replace(
                     &mut self.environment,
@@ -252,27 +240,13 @@ impl Interpreter {
                             Ok(None) => {}
                             Err(e) => {
                                 println!("Error en ejecución: {}", e);
-                                break; // rompe el ciclo actual y vuelve al menú
+                                break;
                             }
                         }
                     }
                 }
                 Ok(None)
             }
-            // Stmt::While { condition, body } => {
-            //     while {
-            //         let cond_val = self.evaluate(condition.clone())?;
-            //         self.is_truthy(cond_val)
-            //     } {
-            //         for stmt in body.clone() {
-            //             let res = self.execute(stmt)?;
-            //             if res.is_some() {
-            //                 return Ok(res);
-            //             }
-            //         }
-            //     }
-            //     Ok(None)
-            // }
 
             Stmt::Switch {
                 condition,
@@ -422,22 +396,18 @@ impl Interpreter {
                     return Ok(Value::Bool(false));
                 }
 
-                // Primero intentar i32
                 if let Ok(n) = trimmed.parse::<i32>() {
                     return Ok(Value::Int(n));
                 }
 
-                // Luego intentar f64
                 if let Ok(n) = trimmed.parse::<f64>() {
                     return Ok(Value::Double(n));
                 }
 
-                // Luego char si es 1 carácter
                 if trimmed.len() == 1 {
                     return Ok(Value::Char(trimmed.chars().next().unwrap()));
                 }
 
-                // Si nada funciona → String
                 Ok(Value::String(trimmed.to_string()))
             }
             _ => Ok(Value::Int(0)),
@@ -445,7 +415,6 @@ impl Interpreter {
     }
 
     fn execute_binary_op(&self, left: Value, op: Token, right: Value) -> Value {
-        // Usamos referencias para evitar el error de "moved value"
         match (&left, &op, &right) {
             // --- ARITMÉTICA PARA ENTEROS (i32) ---
             (Value::Int(a), op, Value::Int(b)) => match op {

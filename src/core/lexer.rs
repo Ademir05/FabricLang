@@ -133,16 +133,6 @@ impl Lexer {
                     ))
                 }
             }
-            // '&' => {
-            //     self.advance();
-            //     if self.match_next('&') {
-            //         self.advance();
-            //         Ok(self.emit(Token::And, start_col))
-            //     } else {
-            //         let msg = format!("Expected '&' after '&'");
-            //         return Err(LexicalError::new(&msg, self.line, self.column));
-            //     }
-            // }
             '|' => {
                 self.advance();
                 if self.match_char('|') {
@@ -155,16 +145,6 @@ impl Lexer {
                     ))
                 }
             }
-            // '|' => {
-            //     self.advance();
-            //     if self.match_next('|') {
-            //         self.advance();
-            //         Ok(self.emit(Token::Or, start_col))
-            //     } else {
-            //         let msg = format!("Expected '|' after '|'");
-            //         return Err(LexicalError::new(&msg, self.line, self.column));
-            //     }
-            // }
 
             // Assign and Comparison Operators
             '=' => {
@@ -175,15 +155,6 @@ impl Lexer {
                     Ok(self.emit(Token::Assign, start_col))
                 }
             }
-            // '=' => {
-            //     self.advance();
-            //     if self.match_next('=') {
-            //         self.advance();
-            //         return Ok(self.emit(Token::EqualEqual, start_col));
-            //     } else {
-            //         return Ok(self.emit(Token::Assign, start_col));
-            //     }
-            // }
             '<' => {
                 self.advance();
                 if self.match_char('=') {
@@ -192,15 +163,6 @@ impl Lexer {
                     Ok(self.emit(Token::Less, start_col))
                 }
             }
-            // '<' => {
-            //     self.advance();
-            //     if self.match_next('=') {
-            //         self.advance();
-            //         return Ok(self.emit(Token::LessEqual, start_col));
-            //     } else {
-            //         return Ok(self.emit(Token::Less, start_col));
-            //     }
-            // }
             '>' => {
                 self.advance();
                 if self.match_char('=') {
@@ -209,15 +171,6 @@ impl Lexer {
                     Ok(self.emit(Token::Greater, start_col))
                 }
             }
-            // '>' => {
-            //     self.advance();
-            //     if self.match_next('=') {
-            //         self.advance();
-            //         return Ok(self.emit(Token::GreaterEqual, start_col));
-            //     } else {
-            //         return Ok(self.emit(Token::Greater, start_col));
-            //     }
-            // }
             '!' => {
                 self.advance();
                 if self.match_char('=') {
@@ -226,15 +179,6 @@ impl Lexer {
                     Ok(self.emit(Token::Not, start_col))
                 }
             }
-            // '!' => {
-            //     self.advance();
-            //     if self.match_next('=') {
-            //         self.advance();
-            //         return Ok(self.emit(Token::NotEqual, start_col));
-            //     } else {
-            //         return Ok(self.emit(Token::Not, start_col));
-            //     }
-            // }
 
             // Aritmetic Operators
             '+' => {
@@ -252,11 +196,9 @@ impl Lexer {
             '/' => {
                 self.advance();
                 if self.match_char('/') {
-                    // Comentario de una línea
                     while !self.is_at_end() && self.peek() != '\n' {
                         self.advance();
                     }
-                    // Consumir el salto de línea si existe
                     if !self.is_at_end() {
                         self.advance();
                     }
@@ -266,17 +208,6 @@ impl Lexer {
 
                 Ok(self.emit(Token::Divide, start_col))
             }
-            // '/' => {
-            //     self.advance();
-            //     if self.match_next('/') {
-            //         while !self.is_at_end() && self.peek() != '\n' {
-            //             self.advance();
-            //         }
-            //         return self.next_token();
-            //     } else {
-            //         Ok(self.emit(Token::Divide, start_col))
-            //     }
-            // }
             '%' => {
                 self.advance();
                 return Ok(self.emit(Token::Modulo, start_col));
@@ -322,12 +253,6 @@ impl Lexer {
         self.advance();
         true
     }
-    // fn match_next(&self, expected: char) -> bool {
-    //     if self.is_at_end() {
-    //         return false;
-    //     }
-    //     self.input[self.position] == expected
-    // }
 
     fn read_identifier(&mut self, start_col: usize) -> Result<TokenData, LexicalError> {
         let start: usize = self.position;
@@ -452,26 +377,6 @@ impl Lexer {
         c
     }
 
-    // pub fn tokenize(&mut self) -> Vec<TokenData> {
-    //     let mut tokens: Vec<TokenData> = Vec::new();
-
-    //     loop {
-    //         match self.next_token() {
-    //             Ok(token) => {
-    //                 let is_eof = token.kind == Token::EOF;
-    //                 tokens.push(token);
-    //                 if is_eof {
-    //                     break;
-    //                 }
-    //             }
-    //             Err(e) => {
-    //                 eprintln!("Lexical Error: {}", e.message);
-    //                 std::process::exit(1);
-    //             }
-    //         }
-    //     }
-    //     tokens
-    // }
     pub fn tokenize(&mut self) -> Result<Vec<TokenData>, LexicalError> {
         let mut tokens: Vec<TokenData> = Vec::new();
 

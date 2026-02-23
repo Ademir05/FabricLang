@@ -95,10 +95,9 @@ impl Parser {
     }
 
     fn parse_return_statement(&mut self) -> Result<Stmt, ParseError> {
-        self.advance(); // Consume 'return'
+        self.advance();
 
         let mut value = None;
-        // Si el siguiente token no es ';', significa que hay una expresión de retorno
         if !self.check(Token::Semi) {
             value = Some(self.parse_expression()?);
         }
@@ -126,17 +125,11 @@ impl Parser {
                 return Err(ParseError::new(
                     &format!("Se esperaba nombre de función, se obtuvo {:?}", t),
                     0,
-                    0, // Note: In a real scenario, you'd pass line/col from TokenData
+                    0,
                 ));
             }
             None => return Err(ParseError::new("Se esperaba nombre de función", 0, 0)),
         };
-        // let name = if let Token::Identifier(n) = self.peek().unwrap().kind.clone() {
-        //     self.advance();
-        //     n
-        // } else {
-        //     panic!("Se esperaba nombre de función");
-        // };
 
         self.consume(Token::LeftParen, "Se esperaba '('")?;
         let mut params = Vec::new();
@@ -165,12 +158,6 @@ impl Parser {
                     None => return Err(ParseError::new("Se esperaba nombre de parámetro", 0, 0)),
                 }
 
-                // if let Token::Identifier(p_name) = self.advance().unwrap().kind.clone() {
-                //     params.push((p_type, p_name));
-                // } else {
-                //     panic!("Se esperaba nombre de parámetro");
-                // }
-
                 if !self.check(Token::Comma) {
                     break;
                 }
@@ -192,7 +179,6 @@ impl Parser {
 
         let mut statements = Vec::new();
 
-        // Recolectamos sentencias hasta que encontremos el cierre '}'
         while !self.check(Token::RightBrace) && !self.is_at_end() {
             statements.push(self.parse_statement()?);
         }
@@ -205,7 +191,7 @@ impl Parser {
         let expr = self.parse_expression()?;
 
         if self.check(Token::Assign) {
-            self.advance(); // consume '='
+            self.advance();
             let value = self.parse_expression()?;
             self.consume(Token::Semi, "Se esperaba ';' después de la asignación")?;
 
@@ -218,11 +204,6 @@ impl Parser {
                     0,
                 ));
             }
-            // if let Expr::Variable(name) = expr {
-            //     return Ok(Stmt::Assignment { name, value });
-            // } else {
-            //     panic!("Solo se puede asignar valores a variables");
-            // }
         }
 
         self.consume(Token::Semi, "Se esperaba ';' después de la expresión")?;
@@ -230,7 +211,7 @@ impl Parser {
     }
 
     fn parse_if_statement(&mut self) -> Result<Stmt, ParseError> {
-        self.advance(); // consume 'if'
+        self.advance();
         self.consume(Token::LeftParen, "Se esperaba '(' después de 'if'")?;
         let condition = self.parse_expression()?;
         self.consume(Token::RightParen, "Se esperaba ')' después de la condición")?;
@@ -239,8 +220,7 @@ impl Parser {
 
         let mut else_branch = None;
         if self.check(Token::Else) {
-            self.advance(); // consume 'else'
-            // Si hay otro 'if' después del 'else', podemos parsearlo recursivamente
+            self.advance();
             if self.check(Token::If) {
                 else_branch = Some(vec![self.parse_if_statement()?]);
             } else {
@@ -256,7 +236,7 @@ impl Parser {
     }
 
     fn parse_while_statement(&mut self) -> Result<Stmt, ParseError> {
-        self.advance(); // consume 'while'
+        self.advance();
         self.consume(Token::LeftParen, "Se esperaba '(' después de 'while'")?;
         let condition = self.parse_expression()?;
         self.consume(Token::RightParen, "Se esperaba ')' después de la condición")?;
@@ -367,32 +347,13 @@ impl Parser {
         }
         Ok(expr)
     }
-    // fn multiplicative(&mut self) -> Result<Expr, ParseError> {
-    //     let mut expr = self.primary()?;
-
-    //     while let Some(t) = self.peek() {
-    //         if matches!(t.kind, Token::Multiply | Token::Divide) {
-    //             let operator = self.advance().unwrap().kind.clone();
-    //             let right = self.primary()?;
-    //             expr = Expr::Binary {
-    //                 left: Box::new(expr),
-    //                 operator,
-    //                 right: Box::new(right),
-    //             };
-    //         } else {
-    //             break;
-    //         }
-    //     }
-    //     Ok(expr)
-    // }
 
     fn unary(&mut self) -> Result<Expr, ParseError> {
         if let Some(t) = self.peek() {
             match t.kind {
                 Token::Minus | Token::Not => {
-                    // '-' o '!'
                     let operator = self.advance().unwrap().kind.clone();
-                    let right = self.unary()?; // Recursivo para soportar --x o !!true
+                    let right = self.unary()?;
                     return Ok(Expr::Unary {
                         operator,
                         right: Box::new(right),
@@ -412,8 +373,8 @@ impl Parser {
         match token_kind {
             // --- Manejo de Paréntesis ---
             Token::LeftParen => {
-                self.advance(); // consume '('
-                let expr = self.parse_expression()?; // Vuelve al inicio de la jerarquía
+                self.advance();
+                let expr = self.parse_expression()?;
                 self.consume(Token::RightParen, "Se esperaba ')' después de la expresión")?;
                 Ok(expr)
             }
@@ -425,11 +386,10 @@ impl Parser {
             }
 
             Token::Identifier(name) => {
-                self.advance(); // Consumimos el nombre
+                self.advance();
 
-                // ¿Viene un paréntesis después?
                 if self.check(Token::LeftParen) {
-                    self.advance(); // Consumimos '('
+                    self.advance(); 
                     let mut arguments = Vec::new();
 
                     if !self.check(Token::RightParen) {
@@ -438,18 +398,16 @@ impl Parser {
                             if !self.check(Token::Comma) {
                                 break;
                             }
-                            self.advance(); // Consume ','
+                            self.advance();
                         }
                     }
                     self.consume(Token::RightParen, "Se esperaba ')'")?;
 
-                    // Retornamos un nuevo nodo de expresión: Llamada
                     Ok(Expr::Call {
                         callee: name.clone(),
                         arguments,
                     })
                 } else {
-                    // Si no hay paréntesis, es solo una variable normal
                     Ok(Expr::Variable(name.clone()))
                 }
             }
@@ -465,7 +423,7 @@ impl Parser {
                     token.line,
                     token.col,
                 ));
-            } // _ => panic!("Se esperaba una expresión en la línea {}", token.line),
+            }
         }
     }
 
@@ -509,7 +467,7 @@ impl Parser {
     }
 
     fn parse_switch_statement(&mut self) -> Result<Stmt, ParseError> {
-        self.advance(); // consume 'switch'
+        self.advance();
         self.consume(Token::LeftParen, "Se esperaba '('")?;
         let condition = self.parse_expression()?;
         self.consume(Token::RightParen, "Se esperaba ')'")?;
@@ -520,17 +478,17 @@ impl Parser {
 
         while !self.check(Token::RightBrace) && !self.is_at_end() {
             if self.check(Token::Case) {
-                self.advance(); // consume 'case'
+                self.advance();
                 let case_val = self.parse_expression()?;
                 self.consume(Token::Colon, "Se esperaba ':'")?;
                 let body = self.parse_block()?;
                 cases.push((case_val, body));
             } else if self.check(Token::Default) {
-                self.advance(); // consume 'default'
+                self.advance();
                 self.consume(Token::Colon, "Se esperaba ':'")?;
                 default_case = Some(self.parse_block()?);
             } else {
-                let t = self.peek().unwrap(); // O manejar Option si quieres seguridad total
+                let t = self.peek().unwrap();
                 return Err(ParseError::new(
                     "Se esperaba 'case' o 'default' dentro del switch",
                     t.line,

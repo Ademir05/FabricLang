@@ -1,10 +1,10 @@
 [types]
 IntType = "int"
-BigIntType = "bigint"
+BigIntType = "bigint" #No utilizado
 StringType = "string"
 BoolType = "bool"
 FloatType = "float"
-DoubleType = "double"
+DoubleType = "double" #No utilizado
 CharType = "char"
 VoidType = "void"
 
@@ -12,7 +12,7 @@ VoidType = "void"
 If = "if"
 Else = "else"
 While = "while"
-For = "for"
+For = "for" #No utilizado
 Switch = "switch"
 Case = "case"
 Default = "default"
@@ -25,5 +25,5 @@ False = "false"
 
 [functions]
 Print = "print"
-Println = "println"
+Println = "println" #No utilizado
 Input = "input"
