@@ -3,6 +3,7 @@ pub mod core {
     pub mod token;
     pub mod parser;
     pub mod ast;
+    pub mod interpreter;
 }
 
 pub mod persistence {

@@ -15,6 +15,7 @@ pub struct SyntaxConfig {
     pub types: Types,
     pub keywords: Keywords,
     pub literals: Literals,
+    pub functions: Functions,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,4 +66,14 @@ pub struct Literals {
     pub r#true: String,
     #[serde(rename = "False")]
     pub r#false: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Functions {
+    #[serde(rename = "Print")]
+    pub print: String,
+    #[serde(rename = "Println")]
+    pub println: String,
+    #[serde(rename = "Input")]
+    pub input: String,
 }

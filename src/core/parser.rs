@@ -1,6 +1,23 @@
 use crate::core::ast::{Expr, Stmt};
 use crate::core::token::{Token, TokenData};
 
+#[derive(Debug, Clone)]
+pub struct ParseError {
+    pub message: String,
+    pub line: usize,
+    pub column: usize,
+}
+
+impl ParseError {
+    pub fn new(message: &str, line: usize, column: usize) -> Self {
+        Self {
+            message: message.to_string(),
+            line,
+            column,
+        }
+    }
+}
+
 pub struct Parser {
     tokens: Vec<TokenData>,
     current: usize,
@@ -11,17 +28,20 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Vec<Stmt> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.parse_statement());
+            statements.push(self.parse_statement()?);
         }
-        statements
+        Ok(statements)
     }
 
-    fn parse_statement(&mut self) -> Stmt {
-        let t = self.peek().expect("Unexpected end of input");
-        match t.kind {
+    fn parse_statement(&mut self) -> Result<Stmt, ParseError> {
+        let t = self
+            .peek()
+            .ok_or(ParseError::new("Unexpected end of input", 0, 0))?;
+
+        match &t.kind {
             Token::IntType
             | Token::FloatType
             | Token::StringType
@@ -40,59 +60,85 @@ impl Parser {
                     self.parse_var_declaration()
                 }
             }
-
             Token::If => self.parse_if_statement(),
-
-            Token::LeftBrace => Stmt::Block(self.parse_block()),
-
+            Token::LeftBrace => Ok(Stmt::Block(self.parse_block()?)),
             Token::Identifier(_) => self.parse_assignment_or_expression(),
-
             Token::Return => self.parse_return_statement(),
-
             Token::While => self.parse_while_statement(),
-
-            _ => panic!("Sentencia no reconocida: {:?}", t.kind),
+            Token::Print => self.parse_print_statement(),
+            Token::Println => self.parse_println_statement(),
+            Token::Switch => self.parse_switch_statement(),
+            _ => Err(ParseError::new(
+                &format!("Sentencia no reconocida: {:?}", t.kind),
+                t.line,
+                t.col,
+            )),
         }
     }
 
-    fn parse_return_statement(&mut self) -> Stmt {
+    fn parse_print_statement(&mut self) -> Result<Stmt, ParseError> {
+        self.advance();
+        self.consume(Token::LeftParen, "Se esperaba '(' después de 'if'")?;
+        let value = self.parse_expression()?;
+        self.consume(Token::RightParen, "Se esperaba ')' después de la condición")?;
+        self.consume(Token::Semi, "Se esperaba ';' después de la expresión")?;
+        Ok(Stmt::Print { value })
+    }
+
+    fn parse_println_statement(&mut self) -> Result<Stmt, ParseError> {
+        self.advance();
+        self.consume(Token::LeftParen, "Se esperaba '(' después de 'if'")?;
+        let value = self.parse_expression()?;
+        self.consume(Token::RightParen, "Se esperaba ')' después de la condición")?;
+        self.consume(Token::Semi, "Se esperaba ';' después de la expresión")?;
+        Ok(Stmt::Println { value })
+    }
+
+    fn parse_return_statement(&mut self) -> Result<Stmt, ParseError> {
         self.advance(); // Consume 'return'
 
         let mut value = None;
         // Si el siguiente token no es ';', significa que hay una expresión de retorno
         if !self.check(Token::Semi) {
-            value = Some(self.parse_expression());
+            value = Some(self.parse_expression()?);
         }
 
-        self.consume(Token::Semi, "Se esperaba ';' después del valor de retorno");
-        Stmt::Return(value)
+        self.consume(Token::Semi, "Se esperaba ';' después del valor de retorno")?;
+        Ok(Stmt::Return(value))
     }
 
-    fn parse_function_declaration(&mut self) -> Stmt {
-        // 1. Obtener tipo de retorno (int, string, void, etc.)
+    fn parse_function_declaration(&mut self) -> Result<Stmt, ParseError> {
         let return_type = self
             .advance()
             .expect("Se esperaba tipo de retorno")
             .kind
             .clone();
-
-        // 2. Palabra reservada 'function'
         self.consume(
             Token::Function,
             "Se esperaba la palabra reservada 'function'",
-        );
-
-        // 3. Nombre de la función
-        let name = if let Token::Identifier(n) = self.peek().unwrap().kind.clone() {
-            self.advance();
-            n
-        } else {
-            panic!("Se esperaba nombre de función");
+        )?;
+        let name = match self.peek().map(|t| t.kind.clone()) {
+            Some(Token::Identifier(n)) => {
+                self.advance();
+                n
+            }
+            Some(t) => {
+                return Err(ParseError::new(
+                    &format!("Se esperaba nombre de función, se obtuvo {:?}", t),
+                    0,
+                    0, // Note: In a real scenario, you'd pass line/col from TokenData
+                ));
+            }
+            None => return Err(ParseError::new("Se esperaba nombre de función", 0, 0)),
         };
+        // let name = if let Token::Identifier(n) = self.peek().unwrap().kind.clone() {
+        //     self.advance();
+        //     n
+        // } else {
+        //     panic!("Se esperaba nombre de función");
+        // };
 
-        self.consume(Token::LeftParen, "Se esperaba '('");
-
-        // 4. Parámetros tipados: (int a, string b)
+        self.consume(Token::LeftParen, "Se esperaba '('")?;
         let mut params = Vec::new();
         if !self.check(Token::RightParen) {
             loop {
@@ -101,144 +147,164 @@ impl Parser {
                     .expect("Se esperaba tipo de parámetro")
                     .kind
                     .clone();
-                if let Token::Identifier(p_name) = self.advance().unwrap().kind.clone() {
-                    params.push((p_type, p_name));
-                } else {
-                    panic!("Se esperaba nombre de parámetro");
+                match self.advance() {
+                    Some(TokenData {
+                        kind: Token::Identifier(p_name),
+                        line: _,
+                        col: _,
+                    }) => {
+                        params.push((p_type, p_name.clone()));
+                    }
+                    Some(t) => {
+                        return Err(ParseError::new(
+                            "Se esperaba nombre de parámetro",
+                            t.line,
+                            t.col,
+                        ));
+                    }
+                    None => return Err(ParseError::new("Se esperaba nombre de parámetro", 0, 0)),
                 }
+
+                // if let Token::Identifier(p_name) = self.advance().unwrap().kind.clone() {
+                //     params.push((p_type, p_name));
+                // } else {
+                //     panic!("Se esperaba nombre de parámetro");
+                // }
 
                 if !self.check(Token::Comma) {
                     break;
                 }
-                self.advance(); // consume ','
+                self.advance();
             }
         }
-
-        self.consume(Token::RightParen, "Se esperaba ')'");
-
-        // 5. Cuerpo de la función
-        let body = self.parse_block();
-
-        Stmt::Function {
+        self.consume(Token::RightParen, "Se esperaba ')'")?;
+        let body = self.parse_block()?;
+        Ok(Stmt::Function {
             return_type,
             name,
             params,
             body,
-        }
+        })
     }
 
-    fn parse_block(&mut self) -> Vec<Stmt> {
-        self.consume(Token::LeftBrace, "Se esperaba '{' para iniciar el bloque");
+    fn parse_block(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        self.consume(Token::LeftBrace, "Se esperaba '{' para iniciar el bloque")?;
 
         let mut statements = Vec::new();
 
         // Recolectamos sentencias hasta que encontremos el cierre '}'
         while !self.check(Token::RightBrace) && !self.is_at_end() {
-            statements.push(self.parse_statement());
+            statements.push(self.parse_statement()?);
         }
 
-        self.consume(Token::RightBrace, "Se esperaba '}' para cerrar el bloque");
-        statements
+        self.consume(Token::RightBrace, "Se esperaba '}' para cerrar el bloque")?;
+        Ok(statements)
     }
 
-    fn parse_assignment_or_expression(&mut self) -> Stmt {
-        // Aquí usamos un truco: leemos la expresión primero
-        let expr = self.parse_expression();
+    fn parse_assignment_or_expression(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.parse_expression()?;
 
-        // Si después de la expresión hay un '=', era una asignación
-        // Nota: Esto requiere que tu AST soporte Expr::Assignment o manejarlo como Stmt
         if self.check(Token::Assign) {
             self.advance(); // consume '='
-            let value = self.parse_expression();
-            self.consume(Token::Semi, "Se esperaba ';' después de la asignación");
+            let value = self.parse_expression()?;
+            self.consume(Token::Semi, "Se esperaba ';' después de la asignación")?;
 
-            // Convertimos el identificador inicial en un nodo de asignación
             if let Expr::Variable(name) = expr {
-                return Stmt::Assignment { name, value };
+                return Ok(Stmt::Assignment { name, value });
             } else {
-                panic!("Solo se puede asignar valores a variables");
+                return Err(ParseError::new(
+                    "Solo se puede asignar valores a variables",
+                    0,
+                    0,
+                ));
             }
+            // if let Expr::Variable(name) = expr {
+            //     return Ok(Stmt::Assignment { name, value });
+            // } else {
+            //     panic!("Solo se puede asignar valores a variables");
+            // }
         }
 
-        self.consume(Token::Semi, "Se esperaba ';' después de la expresión");
-        Stmt::Expression(expr)
+        self.consume(Token::Semi, "Se esperaba ';' después de la expresión")?;
+        Ok(Stmt::Expression(expr))
     }
 
-    fn parse_if_statement(&mut self) -> Stmt {
+    fn parse_if_statement(&mut self) -> Result<Stmt, ParseError> {
         self.advance(); // consume 'if'
-        self.consume(Token::LeftParen, "Se esperaba '(' después de 'if'");
-        let condition = self.parse_expression();
-        self.consume(Token::RightParen, "Se esperaba ')' después de la condición");
+        self.consume(Token::LeftParen, "Se esperaba '(' después de 'if'")?;
+        let condition = self.parse_expression()?;
+        self.consume(Token::RightParen, "Se esperaba ')' después de la condición")?;
 
-        let then_branch = self.parse_block();
+        let then_branch = self.parse_block()?;
 
         let mut else_branch = None;
         if self.check(Token::Else) {
             self.advance(); // consume 'else'
             // Si hay otro 'if' después del 'else', podemos parsearlo recursivamente
             if self.check(Token::If) {
-                else_branch = Some(vec![self.parse_if_statement()]);
+                else_branch = Some(vec![self.parse_if_statement()?]);
             } else {
-                else_branch = Some(self.parse_block());
+                else_branch = Some(self.parse_block()?);
             }
         }
 
-        Stmt::If {
+        Ok(Stmt::If {
             condition,
             then_branch,
             else_branch,
-        }
+        })
     }
 
-    fn parse_while_statement(&mut self) -> Stmt {
+    fn parse_while_statement(&mut self) -> Result<Stmt, ParseError> {
         self.advance(); // consume 'while'
-        self.consume(Token::LeftParen, "Se esperaba '(' después de 'while'");
-        let condition = self.parse_expression();
-        self.consume(Token::RightParen, "Se esperaba ')' después de la condición");
+        self.consume(Token::LeftParen, "Se esperaba '(' después de 'while'")?;
+        let condition = self.parse_expression()?;
+        self.consume(Token::RightParen, "Se esperaba ')' después de la condición")?;
 
-        let body = self.parse_block();
+        let body = self.parse_block()?;
 
-        Stmt::While { condition, body }
+        Ok(Stmt::While { condition, body })
     }
 
-    fn parse_var_declaration(&mut self) -> Stmt {
-        // 1. Obtener el tipo (ya sabemos que es uno de los tipos por el match anterior)
-        let ty = self.advance().unwrap().kind.clone();
+    fn parse_var_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let ty = self
+            .advance()
+            .ok_or(ParseError::new("Se esperaba un tipo", 0, 0))?
+            .kind
+            .clone();
 
-        // 2. Obtener el nombre (Identifier)
         let name = if let Token::Identifier(ref n) = self.peek().unwrap().kind {
             let name_string = n.clone();
             self.advance();
             name_string
         } else {
-            panic!("Se esperaba un nombre de variable");
+            let t = self.peek().unwrap();
+            return Err(ParseError::new(
+                "Se esperaba un nombre de variable",
+                t.line,
+                t.col,
+            ));
         };
 
-        // 3. ¿Tiene valor inicial? (Opcional)
         let mut initializer = None;
         if self.check(Token::Assign) {
-            self.advance(); // consume '='
-            initializer = Some(self.parse_expression()); // Aquí llamarías a la lógica de expresiones
+            self.advance();
+            initializer = Some(self.parse_expression()?);
         }
 
-        // 4. Finalizar con ';'
-        self.consume(Token::Semi, "Se esperaba ';' al final de la declaración");
-
-        Stmt::VarDeclaration {
+        self.consume(Token::Semi, "Se esperaba ';' al final de la declaración")?;
+        Ok(Stmt::VarDeclaration {
             ty,
             name,
             initializer,
-        }
+        })
     }
 
-    // fn parse_expression(&mut self) -> Expr {
-    //     self.additive()
-    // }
-    fn parse_expression(&mut self) -> Expr {
+    fn parse_expression(&mut self) -> Result<Expr, ParseError> {
         self.comparison()
     }
-    fn comparison(&mut self) -> Expr {
-        let mut expr = self.additive(); // Primero resolvemos sumas/restas
+    fn comparison(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.additive()?;
 
         while let Some(t) = self.peek() {
             if matches!(
@@ -251,7 +317,7 @@ impl Parser {
                     | Token::NotEqual
             ) {
                 let operator = self.advance().unwrap().kind.clone();
-                let right = self.additive(); // Comparamos con otra expresión aritmética
+                let right = self.additive()?;
                 expr = Expr::Binary {
                     left: Box::new(expr),
                     operator,
@@ -261,16 +327,16 @@ impl Parser {
                 break;
             }
         }
-        expr
+        Ok(expr)
     }
 
-    fn additive(&mut self) -> Expr {
-        let mut expr = self.multiplicative();
+    fn additive(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.multiplicative()?;
 
         while let Some(t) = self.peek() {
             if matches!(t.kind, Token::Plus | Token::Minus) {
                 let operator = self.advance().unwrap().kind.clone();
-                let right = self.multiplicative();
+                let right = self.multiplicative()?;
                 expr = Expr::Binary {
                     left: Box::new(expr),
                     operator,
@@ -280,16 +346,16 @@ impl Parser {
                 break;
             }
         }
-        expr
+        Ok(expr)
     }
 
-    fn multiplicative(&mut self) -> Expr {
-        let mut expr = self.primary();
+    fn multiplicative(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.unary()?;
 
         while let Some(t) = self.peek() {
             if matches!(t.kind, Token::Multiply | Token::Divide) {
                 let operator = self.advance().unwrap().kind.clone();
-                let right = self.primary();
+                let right = self.unary()?;
                 expr = Expr::Binary {
                     left: Box::new(expr),
                     operator,
@@ -299,10 +365,47 @@ impl Parser {
                 break;
             }
         }
-        expr
+        Ok(expr)
+    }
+    // fn multiplicative(&mut self) -> Result<Expr, ParseError> {
+    //     let mut expr = self.primary()?;
+
+    //     while let Some(t) = self.peek() {
+    //         if matches!(t.kind, Token::Multiply | Token::Divide) {
+    //             let operator = self.advance().unwrap().kind.clone();
+    //             let right = self.primary()?;
+    //             expr = Expr::Binary {
+    //                 left: Box::new(expr),
+    //                 operator,
+    //                 right: Box::new(right),
+    //             };
+    //         } else {
+    //             break;
+    //         }
+    //     }
+    //     Ok(expr)
+    // }
+
+    fn unary(&mut self) -> Result<Expr, ParseError> {
+        if let Some(t) = self.peek() {
+            match t.kind {
+                Token::Minus | Token::Not => {
+                    // '-' o '!'
+                    let operator = self.advance().unwrap().kind.clone();
+                    let right = self.unary()?; // Recursivo para soportar --x o !!true
+                    return Ok(Expr::Unary {
+                        operator,
+                        right: Box::new(right),
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        self.primary()
     }
 
-    fn primary(&mut self) -> Expr {
+    fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().expect("Se esperaba un token");
 
         let token_kind = self.peek().unwrap().kind.clone();
@@ -310,16 +413,17 @@ impl Parser {
             // --- Manejo de Paréntesis ---
             Token::LeftParen => {
                 self.advance(); // consume '('
-                let expr = self.parse_expression(); // Vuelve al inicio de la jerarquía
-                self.consume(Token::RightParen, "Se esperaba ')' después de la expresión");
-                expr
+                let expr = self.parse_expression()?; // Vuelve al inicio de la jerarquía
+                self.consume(Token::RightParen, "Se esperaba ')' después de la expresión")?;
+                Ok(expr)
             }
 
             // --- Literales y Variables ---
-            Token::Integer(_) | Token::FloatLiteral(_) | Token::StringLiteral(_) => {
+            Token::IntegerLiteral(_) | Token::FloatLiteral(_) | Token::StringLiteral(_) => {
                 let t = self.advance().unwrap();
-                Expr::Literal(t.kind.clone())
+                Ok(Expr::Literal(t.kind.clone()))
             }
+
             Token::Identifier(name) => {
                 self.advance(); // Consumimos el nombre
 
@@ -330,26 +434,38 @@ impl Parser {
 
                     if !self.check(Token::RightParen) {
                         loop {
-                            arguments.push(self.parse_expression());
+                            arguments.push(self.parse_expression()?);
                             if !self.check(Token::Comma) {
                                 break;
                             }
                             self.advance(); // Consume ','
                         }
                     }
-                    self.consume(Token::RightParen, "Se esperaba ')'");
+                    self.consume(Token::RightParen, "Se esperaba ')'")?;
 
                     // Retornamos un nuevo nodo de expresión: Llamada
-                    Expr::Call {
+                    Ok(Expr::Call {
                         callee: name.clone(),
                         arguments,
-                    }
+                    })
                 } else {
                     // Si no hay paréntesis, es solo una variable normal
-                    Expr::Variable(name.clone())
+                    Ok(Expr::Variable(name.clone()))
                 }
             }
-            _ => panic!("Se esperaba una expresión en la línea {}", token.line),
+            Token::Input => {
+                self.advance();
+                self.consume(Token::LeftParen, "Se esperaba '('")?;
+                self.consume(Token::RightParen, "Se esperaba ')'")?;
+                Ok(Expr::Input)
+            }
+            _ => {
+                return Err(ParseError::new(
+                    "Se esperaba una expresión",
+                    token.line,
+                    token.col,
+                ));
+            } // _ => panic!("Se esperaba una expresión en la línea {}", token.line),
         }
     }
 
@@ -359,11 +475,14 @@ impl Parser {
         })
     }
 
-    fn consume(&mut self, kind: Token, msg: &str) -> &TokenData {
+    fn consume(&mut self, kind: Token, msg: &str) -> Result<&TokenData, ParseError> {
         if self.check(kind) {
-            self.advance().unwrap()
+            Ok(self.advance().unwrap())
         } else {
-            panic!("Error: {} en la línea {}", msg, self.peek().unwrap().line);
+            let t = self
+                .peek()
+                .ok_or(ParseError::new("Unexpected end of input", 0, 0))?;
+            Err(ParseError::new(msg, t.line, t.col))
         }
     }
 
@@ -389,24 +508,42 @@ impl Parser {
         }
     }
 
-    fn synchronize(&mut self) {
-        self.advance();
+    fn parse_switch_statement(&mut self) -> Result<Stmt, ParseError> {
+        self.advance(); // consume 'switch'
+        self.consume(Token::LeftParen, "Se esperaba '('")?;
+        let condition = self.parse_expression()?;
+        self.consume(Token::RightParen, "Se esperaba ')'")?;
+        self.consume(Token::LeftBrace, "Se esperaba '{'")?;
 
-        while !self.is_at_end() {
-            if let Some(prev) = self.tokens.get(self.current - 1) {
-                if prev.kind == Token::Semi {
-                    return;
-                }
-            }
+        let mut cases = Vec::new();
+        let mut default_case = None;
 
-            match self.peek().unwrap().kind {
-                Token::Function | Token::IntType | Token::If | Token::While | Token::Return => {
-                    return;
-                }
-                _ => {
-                    self.advance();
-                }
+        while !self.check(Token::RightBrace) && !self.is_at_end() {
+            if self.check(Token::Case) {
+                self.advance(); // consume 'case'
+                let case_val = self.parse_expression()?;
+                self.consume(Token::Colon, "Se esperaba ':'")?;
+                let body = self.parse_block()?;
+                cases.push((case_val, body));
+            } else if self.check(Token::Default) {
+                self.advance(); // consume 'default'
+                self.consume(Token::Colon, "Se esperaba ':'")?;
+                default_case = Some(self.parse_block()?);
+            } else {
+                let t = self.peek().unwrap(); // O manejar Option si quieres seguridad total
+                return Err(ParseError::new(
+                    "Se esperaba 'case' o 'default' dentro del switch",
+                    t.line,
+                    t.col,
+                ));
             }
         }
+
+        self.consume(Token::RightBrace, "Se esperaba '}'")?;
+        Ok(Stmt::Switch {
+            condition,
+            cases,
+            default: default_case,
+        })
     }
 }

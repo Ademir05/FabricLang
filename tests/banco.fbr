@@ -1,0 +1,70 @@
+// 1. Definición de una función con lógica de Switch y Recursión
+int function procesar_operacion(int opcion, int saldo) {
+    switch (opcion) {
+        case 1: {
+            println("--- CONSULTA DE SALDO ---");
+            print("Su saldo actual es: ");
+            println(saldo);
+            return saldo;
+        }
+        case 2: {
+            println("--- RETIRO DE EFECTIVO ---");
+            print("Ingrese cantidad a retirar: ");
+            int retiro = input();
+            
+            if (retiro > saldo) {
+                println("Error: Fondos insuficientes.");
+                return saldo;
+            } else {
+                int nuevo_saldo = saldo - retiro;
+                print("Retiro exitoso. Nuevo saldo: ");
+                println(nuevo_saldo);
+                return nuevo_saldo;
+            }
+        }
+        case 3: {
+            println("Saliendo del sistema...");
+            return 0 - 1; // Usamos esto como señal de salida
+        }
+        default: {
+            println("Opcion no valida. Intente de nuevo.");
+            return saldo;
+        }
+    }
+}
+
+// 2. Función principal para probar bucles y bloques
+void function main() {
+    println("=== BIENVENIDO A FABRIC BANK ===");
+    
+    int saldo_cuenta = 1000;
+    int continuar = 1;
+
+    // Bucle principal del programa
+    while (continuar == 1) {
+        {
+            // Bloque aislado para mostrar el menú
+            println("");
+            println("1. Ver Saldo");
+            println("2. Retirar");
+            println("3. Salir");
+            print("Seleccione una opcion: ");
+        }
+
+        int seleccion = input();
+        
+        // Actualizamos el saldo usando la función
+        int resultado = procesar_operacion(seleccion, saldo_cuenta);
+
+        // Operador booleano y lógica de control
+        if (resultado == 0 - 1) {
+            continuar = 0;
+            println("Gracias por usar Fabric.");
+        } else {
+            saldo_cuenta = resultado;
+        }
+    }
+}
+
+// 3. Ejecución del programa
+main();

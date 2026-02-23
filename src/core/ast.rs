@@ -17,6 +17,7 @@ pub enum Expr {
         callee: String,
         arguments: Vec<Expr>,
     },
+    Input,
 }
 
 #[derive(Debug, Clone)]
@@ -47,5 +48,16 @@ pub enum Stmt {
         name: String,
         params: Vec<(Token, String)>,
         body: Vec<Stmt>,
+    },
+    Print {
+        value: Expr,
+    },
+    Println {
+        value: Expr,
+    },
+    Switch {
+        condition: Expr,
+        cases: Vec<(Expr, Vec<Stmt>)>,
+        default: Option<Vec<Stmt>>,
     },
 }

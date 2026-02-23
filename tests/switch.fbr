@@ -1,0 +1,36 @@
+// Función recursiva que usa tu nuevo switch
+int function calcular_pasos(int n, int pasos) {
+    print("Evaluando: ");
+    println(n);
+    // Usamos switch para el control de flujo
+    switch (n) {
+        case 1: {
+            print("¡Llegamos al final! Pasos totales: ");
+            return pasos;
+        }
+        case 0: {
+            println("Error: El cero no es válido.");
+            return 0;
+        }
+        default: {
+            // Lógica de Collatz: si es par n/2, si es impar 3n + 1
+            // (Asumiendo que implementaste el operador módulo %,
+            // si no, aquí simulamos una lógica con if/else)
+            if (n > 1) {
+                // Aquí podrías usar una lógica para decidir el siguiente paso
+                // Por ahora, simulamos una reducción simple para el ejemplo
+                return calcular_pasos(n - 1, pasos + 1);
+            }
+            return pasos;
+        }
+    }
+}
+// Programa principal
+void function main() {
+    int inicio = 10;
+    int resultado = calcular_pasos(inicio, 0);
+    print("Resultado final: ");
+    println(resultado);
+}
+// Ejecución
+main();

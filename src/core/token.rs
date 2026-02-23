@@ -11,7 +11,7 @@ pub enum Token {
     VoidType,
 
     // Literals
-    Integer(i64),
+    IntegerLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(String),
     BoolLiteral(bool),
@@ -46,6 +46,7 @@ pub enum Token {
 
     // Commas
     Comma,
+    Colon,
 
     // Comparison Operators
     EqualEqual,
@@ -72,6 +73,10 @@ pub enum Token {
     Assign,
     Semi,
     EOF,
+
+    Print,
+    Println,
+    Input
 }
 
 pub struct TokenData {
