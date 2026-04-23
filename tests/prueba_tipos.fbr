@@ -1,0 +1,15 @@
+// --- TEST DE TIPOS Y PROMOSION ---
+void function test_tipos() {
+    // Prueba de Int y Float (Promocion)
+    int a = 10;
+    double b = 2.5;
+    double resultado = a + b;
+    print(resultado); // Debe imprimir 12.5
+
+    // Prueba de Comparacion Flexible
+    if (a == 10.0) {
+        print("La comparacion flexible funciona");
+    }
+}
+
+test_tipos();
